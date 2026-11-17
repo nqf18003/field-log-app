@@ -35,12 +35,13 @@ body {
   border: 1px solid #ffffff55; border-radius: 8px; font-size: 15px; white-space: nowrap;
 }
 button.wide { flex: 1 1 auto; font-size: 17px; min-height: 52px; }
+/* 題名と、記録の画面では運用の情報（入りきらなければ次の行へ） */
+.ttlbox { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; }
+.actsum { min-width: 0; font-size: 13px; line-height: 1.35; overflow-wrap: anywhere; opacity: .92; }
 .actbtn {
-  margin-left: auto; min-width: 0; max-width: 72%; display: flex; align-items: center; gap: 6px;
-  background: transparent; color: var(--head-fg); border: 1px solid #ffffff55; border-radius: 8px;
-  padding: 6px 10px; font-size: 14px;
+  flex: 0 0 auto; min-height: 40px; background: transparent; color: var(--head-fg);
+  border: 1px solid #ffffff99; border-radius: 8px; padding: 4px 14px; font-size: 15px;
 }
-.actbtn #actSummary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 main { max-width: 720px; margin: 0 auto; padding: 10px 12px 40px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 12px; }
@@ -87,7 +88,6 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0;
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
 #more { margin-top: 10px; }
 #more summary, .help summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; }
-#more > label { margin-top: 8px; }
 .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .btns.end { justify-content: flex-end; }
 #logBtn { flex: 1 1 auto; font-size: 18px; min-height: 52px; }
@@ -103,6 +103,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0;
 }
 .list .no { color: var(--muted); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
 .list .cs { font-weight: 700; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 17px; }
+.list .cs.badcall { color: var(--danger); text-decoration: underline wavy; text-underline-offset: 3px; }   /* 形がおかしいコールサイン */
 .list .tm { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .list .dt { grid-column: 2 / 4; color: var(--muted); font-size: 13px; }
 

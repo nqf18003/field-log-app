@@ -13,10 +13,11 @@
 <body>
 <header class="top">
   <button type="button" id="backBtn" class="back" hidden aria-label="戻る">‹ 戻る</button>
-  <div class="ttl" id="ttl">移動運用ログ</div>
-  <button type="button" id="actBtn" class="actbtn" hidden aria-label="今の運用の情報を直す">
-    <span id="actSummary">運用の情報</span><span class="gear" aria-hidden="true">▾</span>
-  </button>
+  <div class="ttlbox">
+    <span class="ttl" id="ttl">移動運用ログ</span>
+    <span id="actSummary" class="actsum" hidden></span>
+  </div>
+  <button type="button" id="actBtn" class="actbtn" hidden aria-label="今の運用の情報を変更する">変更</button>
 </header>
 
 <main>
@@ -35,7 +36,8 @@
       <summary>使い方</summary>
       <ol>
         <li>「新しい運用を始める」で、自分のコールサイン・山頂（SOTA）・公園（POTA）などを入れて「保存して記録を始める」。</li>
-        <li>相手のコールサインを入れて「記録する」（キーボードの完了でも記録します）。日付と時刻（UTC）は記録した瞬間のものが入ります。</li>
+        <li>相手のコールサインを入れて「記録する」（キーボードの完了でも記録します）。日付と時刻（UTC）は記録した瞬間のものが入ります。
+          周波数は一度入れると、変えるまでそのまま残ります（空でも記録できます）。コールサインの形がおかしくても記録し、一覧では赤で表示します。</li>
         <li>同じ局と、この運用ですでに交信していると、コールサインの下に知らせが出ます（同じバンド・モードなら赤）。</li>
         <li>「IC-705 につなぐ」で、周波数とモードを無線機から読んで自動で入れます。</li>
         <li>運用が終わったら、「この運用の交信」の「ADIF を書き出す」。家で ADIF一括編集ツールに読み込んで、SOTA・POTA 用に分けます。</li>
@@ -104,15 +106,14 @@
         <label>RST もらった<input id="rstR" inputmode="numeric" autocomplete="off" maxlength="4"></label>
       </div>
 
-      <details id="more">
-        <summary>相手の SOTA・POTA・JCC/JCG・グリッド・メモ</summary>
+      <details id="more" open>
+        <summary>相手の SOTA・POTA・メモ・グリッド</summary>
         <div class="row2">
           <label>相手の SOTA<input id="sotaRef" placeholder="例: JA/NN-001" autocapitalize="characters" autocomplete="off"></label>
           <label>相手の POTA<input id="potaRef" placeholder="例: JP-0001" autocapitalize="characters" autocomplete="off"></label>
-          <label>相手の JCC/JCG<input id="jccRef" placeholder="例: 1001" autocapitalize="characters" autocomplete="off"></label>
+          <label>メモ<input id="comment" autocomplete="off"></label>
           <label>グリッド<input id="grid" placeholder="例: PM74" autocapitalize="characters" autocomplete="off" maxlength="8"></label>
         </div>
-        <label>メモ<input id="comment" autocomplete="off"></label>
       </details>
 
       <div class="btns">
@@ -154,10 +155,9 @@
       <label>RST もらった<input id="eRstR" inputmode="numeric" maxlength="4"></label>
       <label>相手の SOTA<input id="eSota" autocapitalize="characters"></label>
       <label>相手の POTA<input id="ePota" autocapitalize="characters"></label>
-      <label>相手の JCC/JCG<input id="eJcc" autocapitalize="characters"></label>
+      <label>メモ<input id="eComment"></label>
       <label>グリッド<input id="eGrid" autocapitalize="characters" maxlength="8"></label>
     </div>
-    <label>メモ<input id="eComment"></label>
     <p id="eMsg" class="msg err"></p>
     <div class="btns end">
       <button type="button" id="eDel" class="danger">この交信を削除</button>

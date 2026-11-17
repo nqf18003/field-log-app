@@ -3,7 +3,7 @@
 // IC-705 には Web Bluetooth（BLE）でつなぎ、周波数とモードを読むだけ（つなぎ方は ic705-bt/ と同じ）。
 'use strict';
 
-const APP_VER = '2026-11-17-2'; // 変えたら sw.js の CACHE も同じ名前に変える
+const APP_VER = '2026-11-17-3'; // 変えたら sw.js の CACHE も同じ名前に変える
 const STORE = 'fieldlog.v1';    // 記録を入れておく localStorage のキー
 
 const $ = (id) => document.getElementById(id);
@@ -14,7 +14,7 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 // ===================== 記録（運用ごと） =====================
 // db = { cur: 今の運用の id, acts: [運用…], form: { freq, mode } }
 // 運用 = { id, created, info: { call, grid, sota, jcc, parks: [3つ] }, qsos: [交信…], changedAt, exportedAt }
-// 交信 = { id, call, date: 'YYYYMMDD'(UTC), time: 'HHMMSS'(UTC), freq: 'MHz', band, mode, rstS, rstR, sota, pota, jcc（相手の JCC/JCG）, grid, comment }
+// 交信 = { id, call, date: 'YYYYMMDD'(UTC), time: 'HHMMSS'(UTC), freq: 'MHz'（空のこともある）, band, mode, rstS, rstR, sota, pota, grid, comment }
 let db = { cur: null, acts: [], form: { freq: '', mode: 'CW' } };
 
 function loadDb() {
@@ -93,6 +93,8 @@ function freqNorm(text) {
 // モードごとの RST の初めの値（FT8・FT4 は空にしておく）
 const RST_DEF = { CW: '599', RTTY: '599', SSB: '59', FM: '59', AM: '59', DSTAR: '59', FT8: '', FT4: '' };
 const normCall = (s) => String(s || '').trim().toUpperCase().replace(/\s+/g, '');
+// コールサインらしい形か（英字と数字を両方含む 3 文字以上）。おかしくても記録はするが、一覧で赤く出す
+const callOk = (c) => /^[A-Z0-9/]{3,}$/.test(c) && /[0-9]/.test(c) && /[A-Z]/.test(c);
 const normRef = (s) => String(s || '').trim().toUpperCase().replace(/\s+/g, '');
 
 // ===================== 入力欄 =====================
@@ -118,7 +120,7 @@ function rememberForm() {
   saveDb();
 }
 function clearEntry() {
-  for (const id of ['call', 'sotaRef', 'potaRef', 'jccRef', 'grid', 'comment']) $(id).value = '';
+  for (const id of ['call', 'sotaRef', 'potaRef', 'grid', 'comment']) $(id).value = '';
   setDefaultRst(true);
   updateDupe();
 }
@@ -140,29 +142,28 @@ function updateDupe() {
 function logQso() {
   const a = curAct() || newAct(null);
   const call = normCall($('call').value);
-  if (!/^[A-Z0-9/]{3,}$/.test(call) || !/[0-9]/.test(call) || !/[A-Z]/.test(call)) {
-    showMsg('コールサインを確かめてください。', true);
+  if (!call) {
+    showMsg('相手のコールサインを入れてください。', true);
     $('call').focus();
     return;
   }
+  // 周波数は空でも記録する（あとで一覧から直せる）。入れた周波数は消さずに次の交信にも使う
   const freq = freqNorm($('freq').value);
-  if (!freq) {
-    showMsg('周波数（MHz）を入れてください。', true);
-    $('freq').focus();
-    return;
-  }
   const { date, time } = utcNow();
   const q = {
     id: uid(), call, date, time, freq, band: bandOf(freq), mode: $('mode').value,
     rstS: $('rstS').value.trim(), rstR: $('rstR').value.trim(),
     sota: normRef($('sotaRef').value), pota: normRef($('potaRef').value),
-    jcc: normRef($('jccRef').value), grid: $('grid').value.trim(), comment: $('comment').value.trim(),
+    grid: $('grid').value.trim(), comment: $('comment').value.trim(),
   };
   a.qsos.push(q);
   a.changedAt = Date.now();
   if (a.qsos.length === 1) askPersist();
-  if (saveDb()) showMsg(`${call} を記録しました（${fmtTime(time)} UTC）。`);
-  $('freq').value = freq;
+  if (saveDb()) {
+    const warn = [callOk(call) ? '' : 'コールサインの形を確かめてください', freq ? '' : '周波数が空です'].filter(Boolean).join('・');
+    showMsg(`${call} を記録しました（${fmtTime(time)} UTC）。` + (warn ? `${warn}（一覧から直せます）。` : ''), !!warn);
+  }
+  if (freq) $('freq').value = freq;
   rememberForm();
   clearEntry();
   render();
@@ -181,7 +182,7 @@ function render() {
   const a = curAct();
   const qsos = a ? a.qsos : [];
   const title = a ? actTitle(a) : '';
-  $('actSummary').textContent = a ? [a.info.call, title].filter(Boolean).join('  ') || '運用の情報を入れる' : '運用の情報';
+  $('actSummary').textContent = a ? [a.info.call, title, a.info.jcc].filter(Boolean).join('  ') || '（運用の情報なし）' : '';
   $('countTop').textContent = `${qsos.length} 交信`;
   $('countList').textContent = qsos.length ? `（${qsos.length}）` : '';
   $('empty').hidden = qsos.length > 0;
@@ -194,13 +195,12 @@ function render() {
     b.type = 'button';
     const span = (cls, text) => { const s = document.createElement('span'); s.className = cls; s.textContent = text; b.appendChild(s); };
     span('no', String(i + 1));
-    span('cs', q.call);
+    span(callOk(q.call) ? 'cs' : 'cs badcall', q.call);
     span('tm', `${fmtTime(q.time)} UTC`);
     span('no', '');
     const det = [q.freq, q.band, q.mode, (q.rstS || q.rstR) ? `${q.rstS || '-'}/${q.rstR || '-'}` : ''];
     if (q.sota) det.push('S2S ' + q.sota);
     if (q.pota) det.push('P2P ' + q.pota);
-    if (q.jcc) det.push(q.jcc);
     if (q.grid) det.push(q.grid);
     if (q.comment) det.push(q.comment);
     span('dt', det.filter(Boolean).join('  '));
@@ -235,7 +235,7 @@ function ask(text, yes = 'OK') {
 // ===================== 交信を直す =====================
 let editId = null;
 const E = { call: 'eCall', mode: 'eMode', date: 'eDate', time: 'eTime', freq: 'eFreq', rstS: 'eRstS', rstR: 'eRstR',
-  sota: 'eSota', pota: 'ePota', jcc: 'eJcc', grid: 'eGrid', comment: 'eComment' };
+  sota: 'eSota', pota: 'ePota', grid: 'eGrid', comment: 'eComment' };
 function openQso(id) {
   const a = curAct(), q = a && a.qsos.find((x) => x.id === id);
   if (!q) return;
@@ -255,16 +255,15 @@ $('eSave').addEventListener('click', () => {
   const date = $('eDate').value.trim().replace(/-/g, '');
   const freq = freqNorm($('eFreq').value);
   if (time.length === 4) time += '00';
-  const err = !/^[A-Z0-9/]{3,}$/.test(call) ? 'コールサインを確かめてください。'
+  const err = !call ? 'コールサインを入れてください。'
     : !/^\d{8}$/.test(date) ? '日付は 20261108 のように 8 けたで入れてください。'
-    : !/^([01]\d|2[0-3])[0-5]\d[0-5]\d$/.test(time) ? '時刻は 0205 か 020544 のように入れてください（UTC）。'
-    : !freq ? '周波数（MHz）を入れてください。' : '';
+    : !/^([01]\d|2[0-3])[0-5]\d[0-5]\d$/.test(time) ? '時刻は 0205 か 020544 のように入れてください（UTC）。' : '';
   if (err) { $('eMsg').textContent = err; return; }
   Object.assign(q, {
     call, date, time, freq, band: bandOf(freq), mode: $('eMode').value,
     rstS: $('eRstS').value.trim(), rstR: $('eRstR').value.trim(),
     sota: normRef($('eSota').value), pota: normRef($('ePota').value),
-    jcc: normRef($('eJcc').value), grid: $('eGrid').value.trim(), comment: $('eComment').value.trim(),
+    grid: $('eGrid').value.trim(), comment: $('eComment').value.trim(),
   });
   a.qsos.sort((x, y) => (x.date + x.time).localeCompare(y.date + y.time));
   a.changedAt = Date.now();
@@ -299,6 +298,7 @@ function showView(v) {
   $('logView').hidden = v !== 'log';
   $('backBtn').hidden = v === 'list';
   $('actBtn').hidden = v !== 'log';
+  $('actSummary').hidden = v !== 'log';
   $('ttl').textContent = v === 'list' ? '移動運用ログ' : v === 'info' ? (editing === 'new' ? '新しい運用' : '運用の情報') : '交信の記録';
   window.scrollTo(0, 0);
 }
@@ -490,7 +490,7 @@ function adifText(a) {
       + fld('MY_SIG', parks.length ? 'POTA' : '') + fld('MY_SIG_INFO', parks.join(','))
       + fld('QSO_DATE', q.date) + fld('TIME_ON', q.time) + fld('RST_RCVD', q.rstR) + fld('RST_SENT', q.rstS)
       + fld('SOTA_REF', q.sota) + fld('SIG', q.pota ? 'POTA' : '') + fld('SIG_INFO', q.pota)
-      + fld('GRIDSQUARE', q.grid) + fld('CNTY', q.jcc) + fld('COMMENT', q.comment)).trimEnd() + ' <EOR>\n';
+      + fld('GRIDSQUARE', q.grid) + fld('COMMENT', q.comment)).trimEnd() + ' <EOR>\n';
   }
   return s;
 }
@@ -755,7 +755,7 @@ $('demoBtn').addEventListener('click', () => connect(true));
 $('qsoForm').addEventListener('submit', (e) => { e.preventDefault(); logQso(); });
 $('clearBtn').addEventListener('click', () => { clearEntry(); showMsg(''); $('call').focus(); });
 $('call').addEventListener('input', updateDupe);
-$('freq').addEventListener('input', onFreqChanged);
+$('freq').addEventListener('input', () => { onFreqChanged(); rememberForm(); });
 $('freq').addEventListener('change', () => { const f = freqNorm($('freq').value); if (f) $('freq').value = f; onFreqChanged(); rememberForm(); });
 $('mode').addEventListener('change', () => { setDefaultRst(); updateDupe(); rememberForm(); });
 for (const id of ['rstS', 'rstR']) $(id).addEventListener('input', () => { rstTouched = true; });
