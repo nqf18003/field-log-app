@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>移動運用ログ</title>
+<meta name="description" content="山や公園の移動運用で、スマホで交信を記録するログソフト。IC-705 から周波数とモードを読み、ADIF で書き出す。">
+<meta name="theme-color" content="#1d2733">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <button type="button" id="backBtn" class="back" hidden aria-label="戻る">‹ 戻る</button>
+  <div class="ttl" id="ttl">移動運用ログ</div>
+  <button type="button" id="actBtn" class="actbtn" hidden aria-label="今の運用の情報を直す">
+    <span id="actSummary">運用の情報</span><span class="gear" aria-hidden="true">▾</span>
+  </button>
+</header>
+
+<main>
+  <!-- メイン画面: 運用の一覧 -->
+  <div id="listView">
+    <section class="card">
+      <h2>運用の一覧</h2>
+      <div class="btns">
+        <button type="button" id="newActBtn" class="primary wide">＋ 新しい運用を始める</button>
+      </div>
+      <ul id="actList" class="actlist"></ul>
+      <p id="actEmpty" class="muted">まだ運用はありません。「新しい運用を始める」を押してください。</p>
+    </section>
+
+    <details class="card help">
+      <summary>使い方</summary>
+      <ol>
+        <li>「新しい運用を始める」で、自分のコールサイン・山頂（SOTA）・公園（POTA）などを入れて「保存して記録を始める」。</li>
+        <li>相手のコールサインを入れて「記録する」（キーボードの完了でも記録します）。日付と時刻（UTC）は記録した瞬間のものが入ります。</li>
+        <li>同じ局と、この運用ですでに交信していると、コールサインの下に知らせが出ます（同じバンド・モードなら赤）。</li>
+        <li>「IC-705 につなぐ」で、周波数とモードを無線機から読んで自動で入れます。</li>
+        <li>運用が終わったら、「この運用の交信」の「ADIF を書き出す」。家で ADIF一括編集ツールに読み込んで、SOTA・POTA 用に分けます。</li>
+        <li>前の運用は、この一覧から押すと開けます（交信の追加・直す・書き出し）。</li>
+      </ol>
+      <p class="muted">記録はこのスマホのブラウザーの中だけに保存します（どこにも送りません）。ブラウザーのデータを消すと記録も消えるので、運用のあとは書き出してください。</p>
+    </details>
+  </div>
+
+  <!-- 今の運用（運用の情報を入れる・直す） -->
+  <div id="infoView" hidden>
+    <form id="actForm" class="card" autocomplete="off" novalidate>
+      <h2 id="infoTitle">新しい運用</h2>
+      <div class="row2">
+        <label>自分のコールサイン<input id="aCall" placeholder="例: JA1ABC/1" autocapitalize="characters" autocomplete="off"></label>
+        <label>自分のグリッド<input id="aGrid" placeholder="例: PM95ur" autocomplete="off" maxlength="8"></label>
+        <label>山頂（SOTA）<input id="aSota" placeholder="例: JA/TK-001" autocapitalize="characters" autocomplete="off"></label>
+        <label>JCC/JCG<input id="aJcc" placeholder="例: JCC1001" autocapitalize="characters" autocomplete="off"></label>
+        <label>公園 1（POTA）<input id="aPark1" placeholder="例: JP-0001" autocapitalize="characters" autocomplete="off"></label>
+        <label>公園 2<input id="aPark2" placeholder="2fer のとき" autocapitalize="characters" autocomplete="off"></label>
+        <label>公園 3<input id="aPark3" placeholder="3fer のとき" autocapitalize="characters" autocomplete="off"></label>
+      </div>
+      <p class="muted small">ここに入れた情報は、この運用の交信すべてに使われます（書き出すときに入れます）。</p>
+      <div class="btns">
+        <button type="submit" class="primary wide" id="aSave">保存して記録を始める</button>
+        <button type="button" class="sub" id="aBack">やめる（一覧へ）</button>
+      </div>
+      <div class="btns end">
+        <button type="button" id="delActBtn" class="danger" hidden>この運用を削除</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- 交信の記録 -->
+  <div id="logView" hidden>
+    <section class="card rig" aria-label="無線機">
+      <span id="rigState" class="rigstate">IC-705: つないでいません</span>
+      <span class="rigbtns">
+        <button type="button" id="connBtn">IC-705 につなぐ</button>
+        <button type="button" id="demoBtn" class="sub">デモ</button>
+      </span>
+    </section>
+
+    <form id="qsoForm" class="card" autocomplete="off" novalidate>
+      <div class="clock">
+        <span id="utcNow">--:--:-- UTC</span>
+        <span id="countTop">0 交信</span>
+      </div>
+      <label class="vh" for="call">相手のコールサイン</label>
+      <input id="call" class="call" placeholder="相手のコールサイン" autocapitalize="characters"
+             autocorrect="off" spellcheck="false" autocomplete="off" enterkeyhint="done" maxlength="20">
+      <div id="dupe" class="dupe" hidden></div>
+
+      <div class="row3">
+        <label>周波数（MHz）<input id="freq" inputmode="decimal" placeholder="7.0035" autocomplete="off"></label>
+        <label>バンド<output id="band">--</output></label>
+        <label>モード
+          <select id="mode">
+            <option>CW</option><option>SSB</option><option>FM</option><option>AM</option>
+            <option>RTTY</option><option>FT8</option><option>FT4</option><option>DSTAR</option>
+          </select>
+        </label>
+      </div>
+      <div class="row2">
+        <label>RST 送った<input id="rstS" inputmode="numeric" autocomplete="off" maxlength="4"></label>
+        <label>RST もらった<input id="rstR" inputmode="numeric" autocomplete="off" maxlength="4"></label>
+      </div>
+
+      <details id="more">
+        <summary>相手の SOTA・POTA・JCC/JCG・グリッド・メモ</summary>
+        <div class="row2">
+          <label>相手の SOTA<input id="sotaRef" placeholder="例: JA/NN-001" autocapitalize="characters" autocomplete="off"></label>
+          <label>相手の POTA<input id="potaRef" placeholder="例: JP-0001" autocapitalize="characters" autocomplete="off"></label>
+          <label>相手の JCC/JCG<input id="jccRef" placeholder="例: 1001" autocapitalize="characters" autocomplete="off"></label>
+          <label>グリッド<input id="grid" placeholder="例: PM74" autocapitalize="characters" autocomplete="off" maxlength="8"></label>
+        </div>
+        <label>メモ<input id="comment" autocomplete="off"></label>
+      </details>
+
+      <div class="btns">
+        <button type="submit" class="primary" id="logBtn">記録する</button>
+        <button type="button" class="sub" id="clearBtn">入力を消す</button>
+      </div>
+      <p id="msg" class="msg" role="status"></p>
+    </form>
+
+    <section class="card">
+      <h2>この運用の交信 <span id="countList"></span></h2>
+      <div class="btns export">
+        <button type="button" id="exportBtn">ADIF を書き出す</button>
+        <button type="button" id="shareBtn" class="sub" hidden>ほかのアプリへ送る</button>
+        <button type="button" id="toListBtn" class="sub">‹ 運用の一覧へ戻る</button>
+      </div>
+      <p id="exportInfo" class="muted small"></p>
+      <ol id="list" class="list"></ol>
+      <p id="empty" class="muted">まだ交信はありません。</p>
+    </section>
+  </div>
+</main>
+
+<!-- 交信を直す -->
+<dialog id="qsoDlg" class="dlg">
+  <form method="dialog" class="dlgin" id="qsoEdit" autocomplete="off">
+    <h2>交信を直す</h2>
+    <div class="row2">
+      <label>コールサイン<input id="eCall" autocapitalize="characters" autocomplete="off"></label>
+      <label>モード<select id="eMode">
+        <option>CW</option><option>SSB</option><option>FM</option><option>AM</option>
+        <option>RTTY</option><option>FT8</option><option>FT4</option><option>DSTAR</option>
+      </select></label>
+      <label>日付（UTC）<input id="eDate" placeholder="20261108" inputmode="numeric" maxlength="8"></label>
+      <label>時刻（UTC）<input id="eTime" placeholder="020544" inputmode="numeric" maxlength="6"></label>
+      <label>周波数（MHz）<input id="eFreq" inputmode="decimal"></label>
+      <label>バンド<output id="eBand">--</output></label>
+      <label>RST 送った<input id="eRstS" inputmode="numeric" maxlength="4"></label>
+      <label>RST もらった<input id="eRstR" inputmode="numeric" maxlength="4"></label>
+      <label>相手の SOTA<input id="eSota" autocapitalize="characters"></label>
+      <label>相手の POTA<input id="ePota" autocapitalize="characters"></label>
+      <label>相手の JCC/JCG<input id="eJcc" autocapitalize="characters"></label>
+      <label>グリッド<input id="eGrid" autocapitalize="characters" maxlength="8"></label>
+    </div>
+    <label>メモ<input id="eComment"></label>
+    <p id="eMsg" class="msg err"></p>
+    <div class="btns end">
+      <button type="button" id="eDel" class="danger">この交信を削除</button>
+      <button type="button" id="eCancel" class="sub">やめる</button>
+      <button type="button" id="eSave" class="primary">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 確認 -->
+<dialog id="askDlg" class="dlg small">
+  <form method="dialog" class="dlgin">
+    <p id="askText"></p>
+    <div class="btns end">
+      <button type="button" id="askNo" class="sub">やめる</button>
+      <button type="button" id="askYes" class="danger">OK</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>
