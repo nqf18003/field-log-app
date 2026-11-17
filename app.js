@@ -3,7 +3,7 @@
 // IC-705 には Web Bluetooth（BLE）でつなぎ、周波数とモードを読むだけ（つなぎ方は ic705-bt/ と同じ）。
 'use strict';
 
-const APP_VER = '2026-11-17-3'; // 変えたら sw.js の CACHE も同じ名前に変える
+const APP_VER = '2026-11-17-4'; // 変えたら sw.js の CACHE も同じ名前に変える
 const STORE = 'fieldlog.v1';    // 記録を入れておく localStorage のキー
 
 const $ = (id) => document.getElementById(id);
