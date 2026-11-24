@@ -3,7 +3,7 @@
 // IC-705 には Web Bluetooth（BLE）でつなぎ、周波数とモードを読むだけ（つなぎ方は ic705-bt/ と同じ）。
 'use strict';
 
-const APP_VER = '2026-11-24-9'; // 変えたら sw.js の CACHE も同じ名前に変える
+const APP_VER = '2026-11-24-10'; // 変えたら sw.js の CACHE も同じ名前に変える
 const STORE = 'fieldlog.v1';    // 記録を入れておく localStorage のキー
 
 const $ = (id) => document.getElementById(id);
@@ -210,7 +210,9 @@ function render() {
     };
     const tmCell = document.createElement('span');
     tmCell.className = 'c tm';
-    tmCell.textContent = (q.date ? `${q.date.slice(4, 6)}/${q.date.slice(6, 8)} ` : '') + fmtTime(q.time);   // 空白で 2 段に折り返す
+    // 日付と時刻は別々の段（それぞれ途中で折り返さない。2026-11-24 スマホで 11/2 と 4 に分かれたため）
+    if (q.date) { const d = document.createElement('span'); d.className = 'd'; d.textContent = `${q.date.slice(4, 6)}/${q.date.slice(6, 8)}`; tmCell.appendChild(d); }
+    const t = document.createElement('span'); t.className = 't'; t.textContent = fmtTime(q.time); tmCell.appendChild(t);
     l1.appendChild(tmCell);
     cell(callOk(q.call) ? 'cs' : 'cs badcall', q.call);
     cell('rst', (q.rstS || q.rstR) ? `${q.rstS || '-'}/${q.rstR || '-'}` : '');

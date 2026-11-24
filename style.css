@@ -114,13 +114,21 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0;
 /* 1 行目: 日時・コールサイン・RST・モード・バンド・周波数を同じ大きさで。2 行目: S2S・P2P などを少し小さく */
 /* 項目ごとのセル（列の幅は決めておき、行どうしで列がそろう）。セルの中で折り返す（日時・RST は 2 段になる） */
 .list .ln1 {
-  display: grid; grid-template-columns: 2.75em minmax(0, 1fr) 2.45em 2.6em 2.6em 3.9em;   /* 375 px 幅でコールサインに 6〜7 文字入る */
-  align-items: center; font-size: 17px; line-height: 1.25; font-variant-numeric: tabular-nums;
+  /* v-10（2026-11-24 ユーザーの希望）: 固定幅の字（等幅フォント）。端末に入っている字だけを使う（外から読み込まない）。
+     Android は Droid Sans Mono（monospace）、Windows は Cascadia Mono。どちらも 1 文字の幅が 0.6em なので、試しの画面とスマホで幅がほぼ同じになる。
+     列の幅は文字数（ch）で決める: 日時 5 文字（11/24・01:23）、RST 4 文字（599/）、モード 4 文字（RTTY）、バンド 4 文字（160m）、周波数 7 文字（145.000）。
+     + は左右の余白と区切り線。残りがコールサイン（360 px 幅のスマホでも 6 文字が入る大きさ 15px にした。17px だと 4 文字しか入らない） */
+  display: grid; grid-template-columns: calc(5ch + 3px) minmax(0, 1fr) calc(4ch + 7px) calc(4ch + 7px) calc(4ch + 7px) calc(7ch + 7px);
+  align-items: center; font-size: 15px; line-height: 1.3;
 }
+.list button { font-family: "Roboto Mono", "Droid Sans Mono", "Cascadia Mono", "Noto Sans Mono", Consolas, monospace; }
 .list .ln1 .c { padding: 0 3px; border-left: 1px solid var(--line); overflow-wrap: anywhere; }
 .list .ln1 .c:first-child { border-left: 0; padding-left: 0; }
-.list .ln1 .cs, .list .ln1 .rst { overflow-wrap: normal; word-break: keep-all; }   /* 「/」の後ろ（<wbr>）だけで折り返す */
+.list .ln1 .rst { overflow-wrap: normal; word-break: keep-all; }   /* 「/」の後ろ（<wbr>）だけで折り返す */
+.list .ln1 .cs { word-break: keep-all; }   /* まず「/」の後ろ（<wbr>）で折り返す。それでも入らない幅の広いコールサインだけ途中で折り返す（はみ出さないように） */
+.list .ln1 .tm .d, .list .ln1 .tm .t { display: block; white-space: nowrap; }   /* 日付と時刻は 1 段ずつ（途中で折り返さない） */
 .list .ln1 .fq { overflow-wrap: normal; white-space: nowrap; }   /* 周波数は折り返さない（145.000 まで入る幅） */
+.list .ln1 .md { word-break: break-all; }   /* DSTAR（5 文字）だけは 2 段になる */
 .list .cs { font-weight: 700; }
 .list .cs.badcall { color: var(--danger); text-decoration: underline wavy; text-underline-offset: 3px; }   /* 形がおかしいコールサイン */
 .list .ln2 { display: flex; flex-wrap: wrap; gap: 0 10px; font-size: 12px; color: var(--muted); }
