@@ -3,7 +3,7 @@
 // IC-705 には Web Bluetooth（BLE）でつなぎ、周波数とモードを読むだけ（つなぎ方は ic705-bt/ と同じ）。
 'use strict';
 
-const APP_VER = '2026-11-17-4'; // 変えたら sw.js の CACHE も同じ名前に変える
+const APP_VER = '2026-11-24-9'; // 変えたら sw.js の CACHE も同じ名前に変える
 const STORE = 'fieldlog.v1';    // 記録を入れておく localStorage のキー
 
 const $ = (id) => document.getElementById(id);
@@ -182,7 +182,7 @@ function render() {
   const a = curAct();
   const qsos = a ? a.qsos : [];
   const title = a ? actTitle(a) : '';
-  $('actSummary').textContent = a ? [a.info.call, title, a.info.jcc].filter(Boolean).join('  ') || '（運用の情報なし）' : '';
+  $('actSummary').textContent = a ? [a.info.call, title, a.info.jcc, a.info.grid].filter(Boolean).join('  ') || '（運用の情報なし）' : '';
   $('countTop').textContent = `${qsos.length} 交信`;
   $('countList').textContent = qsos.length ? `（${qsos.length}）` : '';
   $('empty').hidden = qsos.length > 0;
@@ -193,17 +193,37 @@ function render() {
     const li = document.createElement('li');
     const b = document.createElement('button');
     b.type = 'button';
-    const span = (cls, text) => { const s = document.createElement('span'); s.className = cls; s.textContent = text; b.appendChild(s); };
-    span('no', String(i + 1));
-    span(callOk(q.call) ? 'cs' : 'cs badcall', q.call);
-    span('tm', `${fmtTime(q.time)} UTC`);
-    span('no', '');
-    const det = [q.freq, q.band, q.mode, (q.rstS || q.rstR) ? `${q.rstS || '-'}/${q.rstR || '-'}` : ''];
-    if (q.sota) det.push('S2S ' + q.sota);
-    if (q.pota) det.push('P2P ' + q.pota);
-    if (q.grid) det.push(q.grid);
-    if (q.comment) det.push(q.comment);
-    span('dt', det.filter(Boolean).join('  '));
+    const line = (cls) => { const d = document.createElement('span'); d.className = cls; b.appendChild(d); return d; };
+    const put = (parent, cls, text) => { if (!text) return; const s = document.createElement('span'); s.className = cls; s.textContent = text; parent.appendChild(s); };
+    // 1 行目（17px・項目ごとのセル。セルの中で折り返す）: 日時（UTC。月/日 時:分）・コールサイン・RST（送った/もらった）・モード・バンド・周波数。
+    // 番号は付けない（2026-11-24 ユーザーの希望）。空の項目もセルは作る（列をそろえるため）。
+    // コールサインと RST は「/」の後ろだけで折り返す（<wbr> を入れる。途中で切れて読み違えないように）
+    const l1 = line('ln1');
+    const cell = (cls, text) => {
+      const s = document.createElement('span');
+      s.className = 'c ' + cls;
+      String(text || '').split('/').forEach((part, k, all) => {
+        s.appendChild(document.createTextNode(part + (k < all.length - 1 ? '/' : '')));
+        if (k < all.length - 1) s.appendChild(document.createElement('wbr'));
+      });
+      l1.appendChild(s);
+    };
+    const tmCell = document.createElement('span');
+    tmCell.className = 'c tm';
+    tmCell.textContent = (q.date ? `${q.date.slice(4, 6)}/${q.date.slice(6, 8)} ` : '') + fmtTime(q.time);   // 空白で 2 段に折り返す
+    l1.appendChild(tmCell);
+    cell(callOk(q.call) ? 'cs' : 'cs badcall', q.call);
+    cell('rst', (q.rstS || q.rstR) ? `${q.rstS || '-'}/${q.rstR || '-'}` : '');
+    cell('md', q.mode);
+    cell('bd', q.band);
+    cell('fq', q.freq);
+    // 2 行目（あるときだけ）: S2S・P2P を先に、グリッド・メモ（少し小さく）
+    const rest = [];
+    if (q.sota) rest.push(['ref', 'S2S ' + q.sota]);
+    if (q.pota) rest.push(['ref', 'P2P ' + q.pota]);
+    if (q.grid) rest.push(['', q.grid]);
+    if (q.comment) rest.push(['', q.comment]);
+    if (rest.length) { const l2 = line('ln2'); for (const [c, t] of rest) put(l2, c, t); }
     b.addEventListener('click', () => openQso(q.id));
     li.appendChild(b);
     list.appendChild(li);
@@ -296,9 +316,6 @@ function showView(v) {
   $('listView').hidden = v !== 'list';
   $('infoView').hidden = v !== 'info';
   $('logView').hidden = v !== 'log';
-  $('backBtn').hidden = v === 'list';
-  $('actBtn').hidden = v !== 'log';
-  $('actSummary').hidden = v !== 'log';
   $('ttl').textContent = v === 'list' ? '移動運用ログ' : v === 'info' ? (editing === 'new' ? '新しい運用' : '運用の情報') : '交信の記録';
   window.scrollTo(0, 0);
 }
@@ -440,15 +457,7 @@ $('actForm').addEventListener('submit', (e) => {
   go('log');
 });
 $('aBack').addEventListener('click', () => { commitInfo(false); go('list'); });
-// 上の「戻る」: 運用の情報の画面からは（直していれば保存して）元の画面へ、記録の画面からは一覧へ
-$('backBtn').addEventListener('click', () => {
-  if (view === 'info') {
-    const wasNew = editing === 'new';
-    commitInfo(false);
-    if (wasNew || !curAct()) go('list');
-    else { render(); go('log'); }
-  } else go('list');
-});
+// 上の「戻る」ボタンは 2026-11-24 になくした（ユーザーの希望）。一覧へは「メニュー」の「運用の一覧へ戻る」・「やめる（一覧へ）」・スマホの「戻る」で戻る
 $('toListBtn').addEventListener('click', () => go('list'));
 $('delActBtn').addEventListener('click', async () => {
   const a = db.acts.find((x) => x.id === editing);
@@ -525,18 +534,22 @@ $('exportBtn').addEventListener('click', () => {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
   markExported(a);
 });
-// ほかのアプリへ送る（Android の共有。Google ドライブ・Gmail など、選んだアプリにだけ渡す）
+// ほかのアプリへ送る（Android の共有。Google ドライブ・Gmail など、選んだアプリにだけ渡す）。
+// Android の Chrome は、決まった種類（.txt など）のファイルしか共有させてくれず、.adi は「送れません」になる（2026-11-24 ユーザーが気づいた）。
+// そのため名前の後ろに .txt を付けて送る（例: 20261108-ja-wk-079.adi.txt）。ADIF一括編集ツールは .txt も開ける
 function shareFile(a) {
-  return new File([adifText(a)], fileName(a), { type: 'text/plain' });
+  return new File([adifText(a)], fileName(a) + '.txt', { type: 'text/plain' });
 }
 try {
-  if (navigator.canShare && navigator.canShare({ files: [new File(['x'], 'test.adi', { type: 'text/plain' })] })) $('shareBtn').hidden = false;
+  if (navigator.canShare && navigator.canShare({ files: [new File(['x'], 'test.adi.txt', { type: 'text/plain' })] })) $('shareBtn').hidden = false;
 } catch (e) { /* 共有できない端末 */ }
 $('shareBtn').addEventListener('click', async () => {
   const a = curAct();
   if (!a || !a.qsos.length) return;
+  const file = shareFile(a);
   try {
-    await navigator.share({ files: [shareFile(a)], title: fileName(a) });
+    if (navigator.canShare && !navigator.canShare({ files: [file] })) throw new Error('この端末では、ファイルを共有できません。「ADIF を書き出す」を使ってください。');
+    await navigator.share({ files: [file], title: file.name });
     markExported(a);
   } catch (e) {
     if (e.name !== 'AbortError') $('exportInfo').textContent = '送れませんでした: ' + e.message;
@@ -708,6 +721,11 @@ async function connect(demo) {
     await l.open((bytes) => parser.push(bytes), () => onClosed(l));
     link = l;
     showRig();
+    // コントローラーが「待って」と言っている間（バンドの記憶を読む・CW の文章を送る）は、あいさつを送るのも待つ（2026-11-18 ユーザーの希望。
+    // つないだ直後のあいさつと読み出しが、CW の文章のじゃまにならないように）。最長 15 秒で、合図が途切れれば進む
+    if (Date.now() < holdUntil) $('rigState').textContent = 'IC-705: ほかのページが使用中なので、少し待っています…';
+    while (Date.now() < holdUntil && link === l) await sleep(200);
+    if (link !== l) return;
     // あいさつ（ic705-bt と同じ）。はじめての端末は、本体を「相手の機器からペアリング」にしておく
     await send([0xFE, 0xF1, 0x00, 0x61, ...ascii(clientId()), 0xFD]);
     await sleep(50);
@@ -727,8 +745,20 @@ async function connect(demo) {
   }
 }
 let pollBusy = false;
+// IC-705 コントローラー（ic705-bt）からの「少し待って」（2026-11-18 ユーザーの希望）。
+// 同じ IC-705 を 2 つのページで分け合うと、コントローラーの時間のかかる命令（バンドの記憶を読む・CW の文章）の返事が来なくなったので、
+// その間だけ読み出しを止める。同じパソコン・同じブラウザー・同じアドレスのページからだけ届く（BroadcastChannel。インターネットへは出ない）。
+// 合図が止まっても、最後の「待って」から 8 秒（最長 15 秒）で自分で再開する（コントローラーが途中で閉じられても止まったままにならないように）。
+let holdUntil = 0;
+if (typeof BroadcastChannel === 'function') {
+  new BroadcastChannel('ic705-civ').addEventListener('message', (e) => {
+    const m = e.data || {};
+    if (m.type === 'hold') holdUntil = Date.now() + Math.min(15000, Math.max(0, Number(m.ms) || 0));
+    else if (m.type === 'release') holdUntil = 0;
+  });
+}
 async function poll() {
-  if (!link || pollBusy) return;
+  if (!link || pollBusy || Date.now() < holdUntil) return;
   pollBusy = true;
   try { await send(civ(0x03)); await send(civ(0x04)); } catch (e) { /* 次の回にまた読む */ }
   finally { pollBusy = false; }
@@ -753,7 +783,36 @@ $('demoBtn').addEventListener('click', () => connect(true));
 
 // ===================== はじめ =====================
 $('qsoForm').addEventListener('submit', (e) => { e.preventDefault(); logQso(); });
-$('clearBtn').addEventListener('click', () => { clearEntry(); showMsg(''); $('call').focus(); });
+// 入力を消す: つまみを右の端（4 分の 3 より先）まですべらせて離したときだけ消す。押しただけ・少し動かしただけでは消えない（2026-11-24 ユーザーの希望）
+(() => {
+  const box = $('clearSlide'), thumb = box.querySelector('.sthumb');
+  const MIN = 3;
+  let drag = null;
+  const maxPos = () => box.clientWidth - thumb.offsetWidth - 3;
+  box.addEventListener('pointerdown', (e) => {
+    try { box.setPointerCapture(e.pointerId); } catch (err) { /* 無視 */ }
+    drag = { x: e.clientX, pos: MIN, max: maxPos() };
+    box.classList.add('dragging');
+  });
+  box.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    drag.pos = Math.max(MIN, Math.min(drag.max, MIN + (e.clientX - drag.x)));
+    thumb.style.left = drag.pos + 'px';
+    const armed = drag.pos >= MIN + (drag.max - MIN) * 0.75;
+    box.classList.toggle('armed', armed);
+    box.setAttribute('aria-valuenow', String(Math.round((drag.pos - MIN) / Math.max(1, drag.max - MIN) * 100)));
+  });
+  const end = () => {
+    if (!drag) return;
+    const d = drag; drag = null;
+    box.classList.remove('dragging', 'armed');
+    thumb.style.left = '';
+    box.setAttribute('aria-valuenow', '0');
+    if (d.pos >= MIN + (d.max - MIN) * 0.75) { clearEntry(); showMsg('入力を消しました'); }
+  };
+  box.addEventListener('pointerup', end);
+  box.addEventListener('pointercancel', end);
+})();
 $('call').addEventListener('input', updateDupe);
 $('freq').addEventListener('input', () => { onFreqChanged(); rememberForm(); });
 $('freq').addEventListener('change', () => { const f = freqNorm($('freq').value); if (f) $('freq').value = f; onFreqChanged(); rememberForm(); });

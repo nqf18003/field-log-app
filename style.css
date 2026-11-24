@@ -25,23 +25,18 @@ body {
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 .top {
-  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px;
+  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px; min-height: 48px;
   padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top));
   background: var(--head); color: var(--head-fg);
 }
 .ttl { font-weight: 700; white-space: nowrap; }
-.back {
-  min-height: 40px; padding: 4px 10px; background: transparent; color: var(--head-fg);
-  border: 1px solid #ffffff55; border-radius: 8px; font-size: 15px; white-space: nowrap;
-}
 button.wide { flex: 1 1 auto; font-size: 17px; min-height: 52px; }
-/* 題名と、記録の画面では運用の情報（入りきらなければ次の行へ） */
-.ttlbox { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; }
-.actsum { min-width: 0; font-size: 13px; line-height: 1.35; overflow-wrap: anywhere; opacity: .92; }
-.actbtn {
-  flex: 0 0 auto; min-height: 40px; background: transparent; color: var(--head-fg);
-  border: 1px solid #ffffff99; border-radius: 8px; padding: 4px 14px; font-size: 15px;
-}
+.ttlbox { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 0 10px; }   /* 題名は真ん中 */
+/* 記録の画面のいちばん上: 今の運用の情報と「変更」、その下に無線機の状態 */
+.actinfo { padding: 8px 12px; }
+.actline { display: flex; align-items: center; gap: 8px; }
+.actsum { flex: 1 1 auto; min-width: 0; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.actbtn { flex: 0 0 auto; min-height: 40px; padding: 4px 14px; font-size: 15px; }
 
 main { max-width: 720px; margin: 0 auto; padding: 10px 12px 40px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 12px; }
@@ -69,10 +64,8 @@ input, select, output {
 output { display: flex; align-items: center; background: transparent; }
 input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
 
-.rig { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; }
-.rigstate { flex: 1 1 180px; font-size: 14px; }
+.rigstate { display: block; margin-top: 4px; font-size: 14px; color: var(--muted); }
 .rigstate.on { color: var(--ok); font-weight: 600; }
-.rigbtns { display: flex; gap: 8px; }
 
 .clock { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 14px; margin-bottom: 6px; }
 #utcNow { font-weight: 600; color: var(--fg); }
@@ -90,7 +83,24 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0;
 #more summary, .help summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; }
 .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .btns.end { justify-content: flex-end; }
-#logBtn { flex: 1 1 auto; font-size: 18px; min-height: 52px; }
+#logBtn { flex: 1 1 50%; font-size: 18px; min-height: 52px; }
+/* 入力を消す: つまみを右の端まですべらせたときだけ消す（押しただけでは消えない。IC-705 コントローラーのロックと同じ考え） */
+.logrow { flex-wrap: nowrap; }
+.slide {
+  position: relative; flex: 1 1 50%; min-width: 0; min-height: 52px; border-radius: 26px;
+  background: var(--bg); border: 1px solid var(--line); touch-action: none; user-select: none; -webkit-user-select: none; overflow: hidden;
+}
+.slabel { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding-left: 40px;
+  font-size: 14px; color: var(--muted); white-space: nowrap; pointer-events: none; }
+.sthumb {
+  position: absolute; top: 3px; left: 3px; width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-weight: 700;
+  background: var(--card); color: var(--danger); border: 1px solid var(--danger); box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  transition: left .15s; cursor: grab; pointer-events: none;
+}
+.slide.dragging .sthumb { transition: none; }
+.slide.armed { border-color: var(--danger); }
+.slide.armed .sthumb { background: var(--danger); color: var(--card); }
 .msg { min-height: 1.5em; margin: 6px 0 0; font-size: 14px; color: var(--ok); }
 .msg.err { color: var(--danger); }
 
@@ -99,13 +109,23 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0;
 .list li:first-child { border-top: 0; }
 .list button {
   width: 100%; text-align: left; border: 0; background: transparent; color: var(--fg); border-radius: 0;
-  padding: 8px 2px; font-weight: 400; display: grid; grid-template-columns: 3.2em 1fr auto; gap: 2px 8px; align-items: baseline;
+  padding: 8px 2px; font-weight: 400; display: grid; grid-template-columns: 1fr; gap: 2px 0; align-items: baseline;
 }
-.list .no { color: var(--muted); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
-.list .cs { font-weight: 700; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 17px; }
+/* 1 行目: 日時・コールサイン・RST・モード・バンド・周波数を同じ大きさで。2 行目: S2S・P2P などを少し小さく */
+/* 項目ごとのセル（列の幅は決めておき、行どうしで列がそろう）。セルの中で折り返す（日時・RST は 2 段になる） */
+.list .ln1 {
+  display: grid; grid-template-columns: 2.75em minmax(0, 1fr) 2.45em 2.6em 2.6em 3.9em;   /* 375 px 幅でコールサインに 6〜7 文字入る */
+  align-items: center; font-size: 17px; line-height: 1.25; font-variant-numeric: tabular-nums;
+}
+.list .ln1 .c { padding: 0 3px; border-left: 1px solid var(--line); overflow-wrap: anywhere; }
+.list .ln1 .c:first-child { border-left: 0; padding-left: 0; }
+.list .ln1 .cs, .list .ln1 .rst { overflow-wrap: normal; word-break: keep-all; }   /* 「/」の後ろ（<wbr>）だけで折り返す */
+.list .ln1 .fq { overflow-wrap: normal; white-space: nowrap; }   /* 周波数は折り返さない（145.000 まで入る幅） */
+.list .cs { font-weight: 700; }
 .list .cs.badcall { color: var(--danger); text-decoration: underline wavy; text-underline-offset: 3px; }   /* 形がおかしいコールサイン */
-.list .tm { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
-.list .dt { grid-column: 2 / 4; color: var(--muted); font-size: 13px; }
+.list .ln2 { display: flex; flex-wrap: wrap; gap: 0 10px; font-size: 12px; color: var(--muted); }
+.list .ln2 .ref { color: var(--fg); font-weight: 600; }
+.menu .btns:first-of-type { margin-top: 4px; }
 
 .help ol { padding-left: 1.3em; }
 

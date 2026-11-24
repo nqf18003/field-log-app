@@ -12,12 +12,9 @@
 </head>
 <body>
 <header class="top">
-  <button type="button" id="backBtn" class="back" hidden aria-label="戻る">‹ 戻る</button>
   <div class="ttlbox">
     <span class="ttl" id="ttl">移動運用ログ</span>
-    <span id="actSummary" class="actsum" hidden></span>
   </div>
-  <button type="button" id="actBtn" class="actbtn" hidden aria-label="今の運用の情報を変更する">変更</button>
 </header>
 
 <main>
@@ -39,8 +36,9 @@
         <li>相手のコールサインを入れて「記録する」（キーボードの完了でも記録します）。日付と時刻（UTC）は記録した瞬間のものが入ります。
           周波数は一度入れると、変えるまでそのまま残ります（空でも記録できます）。コールサインの形がおかしくても記録し、一覧では赤で表示します。</li>
         <li>同じ局と、この運用ですでに交信していると、コールサインの下に知らせが出ます（同じバンド・モードなら赤）。</li>
-        <li>「IC-705 につなぐ」で、周波数とモードを無線機から読んで自動で入れます。</li>
-        <li>運用が終わったら、「この運用の交信」の「ADIF を書き出す」。家で ADIF一括編集ツールに読み込んで、SOTA・POTA 用に分けます。</li>
+        <li>入力を消すときは、「すべらせて消す」のつまみを右の端まですべらせます（押しただけでは消えません）。</li>
+        <li>下の「メニュー」の「IC-705 につなぐ」で、周波数とモードを無線機から読んで自動で入れます。</li>
+        <li>運用が終わったら、「メニュー」の「ADIF を書き出す」。家で ADIF一括編集ツールに読み込んで、SOTA・POTA 用に分けます。</li>
         <li>前の運用は、この一覧から押すと開けます（交信の追加・直す・書き出し）。</li>
       </ol>
       <p class="muted">記録はこのスマホのブラウザーの中だけに保存します（どこにも送りません）。ブラウザーのデータを消すと記録も消えるので、運用のあとは書き出してください。</p>
@@ -73,12 +71,12 @@
 
   <!-- 交信の記録 -->
   <div id="logView" hidden>
-    <section class="card rig" aria-label="無線機">
+    <section class="card actinfo" aria-label="今の運用">
+      <div class="actline">
+        <span id="actSummary" class="actsum"></span>
+        <button type="button" id="actBtn" class="actbtn" aria-label="今の運用の情報を変更する">変更</button>
+      </div>
       <span id="rigState" class="rigstate">IC-705: つないでいません</span>
-      <span class="rigbtns">
-        <button type="button" id="connBtn">IC-705 につなぐ</button>
-        <button type="button" id="demoBtn" class="sub">デモ</button>
-      </span>
     </section>
 
     <form id="qsoForm" class="card" autocomplete="off" novalidate>
@@ -116,23 +114,36 @@
         </div>
       </details>
 
-      <div class="btns">
+      <div class="btns logrow">
+        <div id="clearSlide" class="slide" role="slider" aria-label="右の端まですべらせると入力を消す" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <span class="slabel">すべらせて消す →</span>
+          <span class="sthumb" aria-hidden="true">✕</span>
+        </div>
         <button type="submit" class="primary" id="logBtn">記録する</button>
-        <button type="button" class="sub" id="clearBtn">入力を消す</button>
       </div>
       <p id="msg" class="msg" role="status"></p>
     </form>
 
     <section class="card">
       <h2>この運用の交信 <span id="countList"></span></h2>
-      <div class="btns export">
-        <button type="button" id="exportBtn">ADIF を書き出す</button>
-        <button type="button" id="shareBtn" class="sub" hidden>ほかのアプリへ送る</button>
-        <button type="button" id="toListBtn" class="sub">‹ 運用の一覧へ戻る</button>
-      </div>
-      <p id="exportInfo" class="muted small"></p>
       <ol id="list" class="list"></ol>
       <p id="empty" class="muted">まだ交信はありません。</p>
+    </section>
+
+    <section class="card menu" id="menu">
+      <h2>メニュー</h2>
+      <div class="btns">
+        <button type="button" id="connBtn">IC-705 につなぐ</button>
+        <button type="button" id="demoBtn" class="sub">デモ</button>
+      </div>
+      <div class="btns">
+        <button type="button" id="exportBtn">ADIF を書き出す</button>
+        <button type="button" id="shareBtn" class="sub" hidden>ほかのアプリへ送る</button>
+      </div>
+      <p id="exportInfo" class="muted small"></p>
+      <div class="btns">
+        <button type="button" id="toListBtn" class="sub">‹ 運用の一覧へ戻る</button>
+      </div>
     </section>
   </div>
 </main>
