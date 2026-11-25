@@ -3,7 +3,7 @@
 // IC-705 には Web Bluetooth（BLE）でつなぎ、周波数とモードを読むだけ（つなぎ方は ic705-bt/ と同じ）。
 'use strict';
 
-const APP_VER = '2026-11-24-10'; // 変えたら sw.js の CACHE も同じ名前に変える
+const APP_VER = '2026-11-25-11'; // 変えたら sw.js の CACHE も同じ名前に変える
 const STORE = 'fieldlog.v1';    // 記録を入れておく localStorage のキー
 
 const $ = (id) => document.getElementById(id);
@@ -92,10 +92,17 @@ function freqNorm(text) {
 
 // モードごとの RST の初めの値（FT8・FT4 は空にしておく）
 const RST_DEF = { CW: '599', RTTY: '599', SSB: '59', FM: '59', AM: '59', DSTAR: '59', FT8: '', FT4: '' };
-const normCall = (s) => String(s || '').trim().toUpperCase().replace(/\s+/g, '');
+// 全角の英数字・記号を半角に（2026-11-25 ユーザーの希望。メモ以外の欄。全角のまま ADIF に入ると、ほかのソフトで読めないおそれがある）。
+// 日本語入力で出やすい「ー」「。」「、」も、それぞれ - . , にする（JP－0001・7。0035 など）
+function toHalf(s) {
+  return String(s || '')
+    .replace(/[！-～]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    .replace(/　/g, ' ').replace(/[ー‐－−―]/g, '-').replace(/。/g, '.').replace(/、/g, ',');
+}
+const normCall = (s) => toHalf(s).trim().toUpperCase().replace(/\s+/g, '');
 // コールサインらしい形か（英字と数字を両方含む 3 文字以上）。おかしくても記録はするが、一覧で赤く出す
 const callOk = (c) => /^[A-Z0-9/]{3,}$/.test(c) && /[0-9]/.test(c) && /[A-Z]/.test(c);
-const normRef = (s) => String(s || '').trim().toUpperCase().replace(/\s+/g, '');
+const normRef = (s) => toHalf(s).trim().toUpperCase().replace(/\s+/g, '');
 
 // ===================== 入力欄 =====================
 let rstTouched = false;   // RST を手で直したら、モードを変えても上書きしない
@@ -412,6 +419,7 @@ function openNewAct() {
   $('infoTitle').textContent = '新しい運用';
   $('aSave').textContent = '保存して記録を始める';
   $('aBack').hidden = false;
+  $('aCancel').hidden = true;
   $('delActBtn').hidden = true;
   go('info');
   ($('aCall').value ? $('aSota') : $('aCall')).focus();
@@ -425,6 +433,7 @@ function openEditAct() {
   $('infoTitle').textContent = '運用の情報';
   $('aSave').textContent = '保存して記録へ戻る';
   $('aBack').hidden = true;
+  $('aCancel').hidden = false;
   $('delActBtn').hidden = false;
   go('info');
 }
@@ -459,6 +468,15 @@ $('actForm').addEventListener('submit', (e) => {
   go('log');
 });
 $('aBack').addEventListener('click', () => { commitInfo(false); go('list'); });
+// 「保存せずに戻る」（2026-11-25 ユーザーの希望。「変更」から開いたときだけ）。直した欄があれば、捨ててよいか 1 回たずねる
+$('aCancel').addEventListener('click', async () => {
+  const a = db.acts.find((x) => x.id === editing);
+  if (a && JSON.stringify(readInfo()) !== JSON.stringify(a.info)
+      && !(await ask('直した内容を保存せずに、記録の画面へ戻りますか？', '保存せずに戻る'))) return;
+  editing = null;
+  render();
+  go('log');
+});
 // 上の「戻る」ボタンは 2026-11-24 になくした（ユーザーの希望）。一覧へは「メニュー」の「運用の一覧へ戻る」・「やめる（一覧へ）」・スマホの「戻る」で戻る
 $('toListBtn').addEventListener('click', () => go('list'));
 $('delActBtn').addEventListener('click', async () => {
@@ -683,7 +701,7 @@ function showRig() {
   const el = $('rigState');
   if (!link) { el.classList.remove('on'); $('connBtn').textContent = 'IC-705 につなぐ'; $('demoBtn').hidden = false; return; }
   el.classList.add('on');
-  el.textContent = `${isDemo ? 'デモ' : 'IC-705'}: ${rigHz ? mhzStr(rigHz / 1e6) + ' MHz' : '読み取り中…'} ${rigMode}`;
+  el.textContent = `${isDemo ? 'デモ' : 'IC-705'}: 接続 ${rigHz ? mhzStr(rigHz / 1e6) + ' MHz' : '読み取り中…'} ${rigMode}`;   // 状態は 未接続・接続中…・接続・切断（2026-11-25）
   $('connBtn').textContent = '切る';
   $('demoBtn').hidden = true;
 }
@@ -718,14 +736,14 @@ async function connect(demo) {
   isDemo = demo;
   granted = false; rigHz = 0; rigMode = ''; parser.buf = [];
   const l = demo ? new DemoLink() : new BleLink();
-  $('rigState').textContent = demo ? 'デモにつないでいます…' : 'IC-705 を選んでください…';
+  $('rigState').textContent = demo ? 'デモ: 接続中…' : 'IC-705: 接続中…（IC-705 を選んでください）';
   try {
     await l.open((bytes) => parser.push(bytes), () => onClosed(l));
     link = l;
     showRig();
     // コントローラーが「待って」と言っている間（バンドの記憶を読む・CW の文章を送る）は、あいさつを送るのも待つ（2026-11-18 ユーザーの希望。
     // つないだ直後のあいさつと読み出しが、CW の文章のじゃまにならないように）。最長 15 秒で、合図が途切れれば進む
-    if (Date.now() < holdUntil) $('rigState').textContent = 'IC-705: ほかのページが使用中なので、少し待っています…';
+    if (Date.now() < holdUntil) $('rigState').textContent = 'IC-705: 接続中…（ほかのページが使用中なので待っています）';
     while (Date.now() < holdUntil && link === l) await sleep(200);
     if (link !== l) return;
     // あいさつ（ic705-bt と同じ）。はじめての端末は、本体を「相手の機器からペアリング」にしておく
@@ -743,7 +761,7 @@ async function connect(demo) {
     l.close();
     link = null;
     showRig();
-    $('rigState').textContent = e.name === 'NotFoundError' ? 'IC-705: つないでいません' : 'つなげませんでした: ' + e.message;
+    $('rigState').textContent = e.name === 'NotFoundError' ? 'IC-705: 未接続' : 'IC-705: 未接続（つなげませんでした: ' + e.message + '）';
   }
 }
 let pollBusy = false;
@@ -771,16 +789,35 @@ function disconnect() {
   clearInterval(pollTimer);
   if (l) l.close();
   showRig();
-  $('rigState').textContent = 'IC-705: 切りました';
+  $('rigState').textContent = 'IC-705: 未接続';
 }
 function onClosed(l) {
   if (link !== l) return;
   link = null;
   clearInterval(pollTimer);
   showRig();
-  $('rigState').textContent = 'IC-705: 切れました（もう一度「つなぐ」を押してください）';
+  $('rigState').textContent = 'IC-705: 切断（もう一度「IC-705 につなぐ」を押してください）';
 }
 $('connBtn').addEventListener('click', () => connect(false));
+// メモ以外の入力欄: 打ったそばから全角を半角に直す（日本語入力の変換中は待ち、確定したときに直す）。
+// キーボードを半角に固定することはウェブページからはできないので、なるべく英数字のキーボードが出るヒント（inputmode="url"）と、
+// 自動の言葉の直し・候補を止める指定だけ付ける（効くかはキーボードしだい）
+document.querySelectorAll('input:not(#comment):not(#eComment)').forEach((el) => {
+  if (el.type && el.type !== 'text') return;
+  if (!el.hasAttribute('inputmode')) el.setAttribute('inputmode', 'url');
+  el.setAttribute('spellcheck', 'false');
+  el.setAttribute('autocorrect', 'off');
+  const fix = () => {
+    const v = toHalf(el.value);
+    if (v === el.value) return;
+    const pos = el.selectionStart;
+    el.value = v;
+    try { if (pos !== null) el.setSelectionRange(pos, pos); } catch (e) { /* 位置を戻せない欄 */ }
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  el.addEventListener('input', (e) => { if (!e.isComposing) fix(); });
+  el.addEventListener('compositionend', () => setTimeout(fix, 0));
+});
 $('demoBtn').addEventListener('click', () => connect(true));
 
 // ===================== はじめ =====================

@@ -36,7 +36,8 @@
         <li>相手のコールサインを入れて「記録する」（キーボードの完了でも記録します）。日付と時刻（UTC）は記録した瞬間のものが入ります。
           周波数は一度入れると、変えるまでそのまま残ります（空でも記録できます）。コールサインの形がおかしくても記録し、一覧では赤で表示します。</li>
         <li>同じ局と、この運用ですでに交信していると、コールサインの下に知らせが出ます（同じバンド・モードなら赤）。</li>
-        <li>入力を消すときは、「すべらせて消す」のつまみを右の端まですべらせます（押しただけでは消えません）。</li>
+        <li>入力を消すときは、「すべらせてクリア」のつまみを右の端まですべらせます（押しただけでは消えません。記録した交信は消えません）。</li>
+        <li>メモ以外の欄は半角の英数字になります（全角で打っても、自動で半角に直します）。</li>
         <li>下の「メニュー」の「IC-705 につなぐ」で、周波数とモードを無線機から読んで自動で入れます。</li>
         <li>運用が終わったら、「メニュー」の「ADIF を書き出す」。家で ADIF一括編集ツールに読み込んで、SOTA・POTA 用に分けます。</li>
         <li>前の運用は、この一覧から押すと開けます（交信の追加・直す・書き出し）。</li>
@@ -62,6 +63,7 @@
       <div class="btns">
         <button type="submit" class="primary wide" id="aSave">保存して記録を始める</button>
         <button type="button" class="sub" id="aBack">やめる（一覧へ）</button>
+        <button type="button" class="sub" id="aCancel" hidden>保存せずに戻る</button>
       </div>
       <div class="btns end">
         <button type="button" id="delActBtn" class="danger" hidden>この運用を削除</button>
@@ -76,7 +78,7 @@
         <span id="actSummary" class="actsum"></span>
         <button type="button" id="actBtn" class="actbtn" aria-label="今の運用の情報を変更する">変更</button>
       </div>
-      <span id="rigState" class="rigstate">IC-705: つないでいません</span>
+      <span id="rigState" class="rigstate">IC-705: 未接続</span>
     </section>
 
     <form id="qsoForm" class="card" autocomplete="off" novalidate>
@@ -105,18 +107,18 @@
       </div>
 
       <details id="more" open>
-        <summary>相手の SOTA・POTA・メモ・グリッド</summary>
+        <summary>相手の SOTA・POTA・グリッド・メモ</summary>
         <div class="row2">
           <label>相手の SOTA<input id="sotaRef" placeholder="例: JA/NN-001" autocapitalize="characters" autocomplete="off"></label>
           <label>相手の POTA<input id="potaRef" placeholder="例: JP-0001" autocapitalize="characters" autocomplete="off"></label>
-          <label>メモ<input id="comment" autocomplete="off"></label>
           <label>グリッド<input id="grid" placeholder="例: PM74" autocapitalize="characters" autocomplete="off" maxlength="8"></label>
+          <label>メモ<input id="comment" autocomplete="off"></label>
         </div>
       </details>
 
       <div class="btns logrow">
-        <div id="clearSlide" class="slide" role="slider" aria-label="右の端まですべらせると入力を消す" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <span class="slabel">すべらせて消す →</span>
+        <div id="clearSlide" class="slide" role="slider" aria-label="右の端まですべらせると入力をクリア" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <span class="slabel">すべらせてクリア →</span>
           <span class="sthumb" aria-hidden="true">✕</span>
         </div>
         <button type="submit" class="primary" id="logBtn">記録する</button>
@@ -166,8 +168,8 @@
       <label>RST もらった<input id="eRstR" inputmode="numeric" maxlength="4"></label>
       <label>相手の SOTA<input id="eSota" autocapitalize="characters"></label>
       <label>相手の POTA<input id="ePota" autocapitalize="characters"></label>
-      <label>メモ<input id="eComment"></label>
       <label>グリッド<input id="eGrid" autocapitalize="characters" maxlength="8"></label>
+      <label>メモ<input id="eComment"></label>
     </div>
     <p id="eMsg" class="msg err"></p>
     <div class="btns end">
