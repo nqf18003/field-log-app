@@ -38,8 +38,8 @@
         <li>同じ局と、この運用ですでに交信していると、コールサインの下に知らせが出ます（同じバンド・モードなら赤）。</li>
         <li>入力を消すときは、「→クリア」のつまみを右の端まですべらせます（押しただけでは消えません。記録した交信は消えません）。</li>
         <li>メモ以外の欄は半角の英数字になります（全角で打っても、自動で半角に直します）。</li>
-        <li>下の「メニュー」の「IC-705 につなぐ」で、周波数とモードを無線機から読んで自動で入れます。</li>
-        <li>運用が終わったら、「メニュー」の「ADIF を書き出す」。家で ADIF一括編集ツールに読み込んで、SOTA・POTA 用に分けます。</li>
+        <li>下の「無線機」の「IC-705 に接続」で、周波数とモードを無線機から読んで自動で入れます。</li>
+        <li>運用が終わったら、下の「書き出し」の「ADIF を書き出す」。家で ADIF一括編集ツールに読み込んで、SOTA・POTA 用に分けます。</li>
         <li>前の運用は、この一覧から押すと開けます（交信の追加・直す・書き出し）。</li>
       </ol>
       <p class="muted">記録はこのスマホのブラウザーの中だけに保存します（どこにも送りません）。ブラウザーのデータを消すと記録も消えるので、運用のあとは書き出してください。</p>
@@ -60,13 +60,13 @@
         <label>公園 3<input id="aPark3" placeholder="3fer のとき" autocapitalize="characters" autocomplete="off"></label>
       </div>
       <p class="muted small">ここに入れた情報は、この運用の交信すべてに使われます（書き出すときに入れます）。</p>
-      <div class="btns">
-        <button type="submit" class="primary wide" id="aSave">保存して記録を始める</button>
-        <button type="button" class="sub" id="aBack">やめる（一覧へ）</button>
-        <button type="button" class="sub" id="aCancel" hidden>保存せずに戻る</button>
+      <div class="btns pair">
+        <button type="button" class="sub" id="aBack">やめる<wbr>（一覧へ）</button>
+        <button type="button" class="sub" id="aCancel" hidden>保存せずに<wbr>戻る</button>
+        <button type="submit" class="primary" id="aSave">保存して<wbr>記録を始める</button>
       </div>
-      <div class="btns end">
-        <button type="button" id="delActBtn" class="danger" hidden>この運用を削除</button>
+      <div class="dzone" id="delActZone" hidden>
+        <button type="button" id="delActBtn" class="danger">この運用を削除</button>
       </div>
     </form>
   </div>
@@ -132,18 +132,18 @@
       <p id="empty" class="muted">まだ交信はありません。</p>
     </section>
 
-    <section class="card menu" id="menu">
-      <h2>メニュー</h2>
-      <div class="btns">
-        <button type="button" id="connBtn">IC-705 につなぐ</button>
-        <button type="button" id="demoBtn" class="sub">デモ</button>
+    <section class="card menu" id="menu" aria-label="無線機・書き出し">
+      <h3 class="mhead">無線機</h3>
+      <div class="mrow">
+        <button type="button" id="connBtn">IC-705 に接続</button>
       </div>
-      <div class="btns">
+      <h3 class="mhead">書き出し</h3>
+      <div class="mrow">
         <button type="button" id="exportBtn">ADIF を書き出す</button>
-        <button type="button" id="shareBtn" class="sub" hidden>ほかのアプリへ送る</button>
+        <button type="button" id="shareBtn" hidden>ほかのアプリへ送る</button>
       </div>
       <p id="exportInfo" class="muted small"></p>
-      <div class="btns">
+      <div class="mrow mback">
         <button type="button" id="toListBtn" class="sub">‹ 運用の一覧へ戻る</button>
       </div>
     </section>
@@ -172,10 +172,12 @@
       <label>メモ<input id="eComment"></label>
     </div>
     <p id="eMsg" class="msg err"></p>
-    <div class="btns end">
-      <button type="button" id="eDel" class="danger">この交信を削除</button>
+    <div class="btns pair">
       <button type="button" id="eCancel" class="sub">やめる</button>
       <button type="button" id="eSave" class="primary">保存</button>
+    </div>
+    <div class="dzone">
+      <button type="button" id="eDel" class="danger">この交信を削除</button>
     </div>
   </form>
 </dialog>

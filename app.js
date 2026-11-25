@@ -3,7 +3,7 @@
 // IC-705 には Web Bluetooth（BLE）でつなぎ、周波数とモードを読むだけ（つなぎ方は ic705-bt/ と同じ）。
 'use strict';
 
-const APP_VER = '2026-11-25-14'; // 変えたら sw.js の CACHE も同じ名前に変える
+const APP_VER = '2026-11-25-15'; // 変えたら sw.js の CACHE も同じ名前に変える
 const STORE = 'fieldlog.v1';    // 記録を入れておく localStorage のキー
 
 const $ = (id) => document.getElementById(id);
@@ -185,6 +185,16 @@ function actTitle(a) {
   if (parks.length) parts.push(parks.join(' '));
   return parts.join(' / ');
 }
+// 運用の名前（一覧・削除の確認。2026-11-25 ユーザーの希望）: SOTA・POTA の番号に種類を付ける。
+// 番号が無ければ JCC/JCG → グリッド → 「SOTA・POTA なし」の順。[{ badge, text }] か { none: 文字 } を返す
+function actLabel(a) {
+  const i = a.info, parks = i.parks.filter(Boolean), out = [];
+  if (i.sota) out.push({ badge: 'SOTA', text: i.sota });
+  if (parks.length) out.push({ badge: 'POTA', text: parks.join(' ') });
+  if (out.length) return out;
+  return { none: i.jcc || i.grid || 'SOTA・POTA なし' };
+}
+const actName = (a) => { const l = actLabel(a); return l.none || l.map((p) => `${p.badge} ${p.text}`).join(' ・ '); };
 function render() {
   const a = curAct();
   const qsos = a ? a.qsos : [];
@@ -373,7 +383,26 @@ function renderActList() {
     if (a.id === db.cur) b.className = 'cur';
     const first = a.qsos[0];
     const day = first ? fmtDate(first.date) + ' UTC' : new Date(a.created).toLocaleDateString();
-    b.textContent = actTitle(a) || a.info.jcc || '（山頂・公園なし）';
+    const lab = actLabel(a);
+    if (lab.none) {
+      const s = document.createElement('span');
+      s.className = lab.none === 'SOTA・POTA なし' ? 'anone' : 'aval';
+      s.textContent = lab.none;
+      b.appendChild(s);
+    } else {
+      // 札と番号はひとまとまり。番号は途中（JP- のあと）で折り返さない
+      for (const p of lab) {
+        const w = document.createElement('span'); w.className = 'apair';
+        const g = document.createElement('span'); g.className = 'badge'; g.textContent = p.badge;
+        w.appendChild(g);
+        p.text.split(' ').forEach((t, k) => {
+          if (k) w.appendChild(document.createTextNode(' '));
+          const v = document.createElement('span'); v.className = 'aval'; v.textContent = t;
+          w.appendChild(v);
+        });
+        b.appendChild(w);
+      }
+    }
     const sub = document.createElement('span');
     sub.className = 'sub2';
     const saved = a.qsos.length && a.exportedAt >= a.changedAt ? '書き出し済み' : (a.qsos.length ? '書き出していない変更あり' : '');
@@ -411,16 +440,21 @@ function readInfo() {
   while (info.parks.length < 3) info.parks.push('');
   return info;
 }
+// ボタンの文字を入れる。「|」のところでだけ折り返す（<wbr>。CSS の word-break: keep-all と組。言葉の途中で切れないように）
+function setLabel(el, text) {
+  el.textContent = '';
+  text.split('|').forEach((t, k) => { if (k) el.appendChild(document.createElement('wbr')); el.appendChild(document.createTextNode(t)); });
+}
 // 一覧の「新しい運用を始める」→ 今の運用の画面。自分のコールサインとグリッドは、いちばん新しい運用から引き継ぐ
 function openNewAct() {
   editing = 'new';
   const last = db.acts[0];
   fillInfo({ call: last ? last.info.call : '', grid: last ? last.info.grid : '', sota: '', jcc: '', parks: ['', '', ''] });
   $('infoTitle').textContent = '新しい運用';
-  $('aSave').textContent = '保存して記録を始める';
+  setLabel($('aSave'), '保存して|記録を始める');
   $('aBack').hidden = false;
   $('aCancel').hidden = true;
-  $('delActBtn').hidden = true;
+  $('delActZone').hidden = true;
   go('info');
   ($('aCall').value ? $('aSota') : $('aCall')).focus();
 }
@@ -431,10 +465,10 @@ function openEditAct() {
   editing = a.id;
   fillInfo(a.info);
   $('infoTitle').textContent = '運用の情報';
-  $('aSave').textContent = '保存して記録へ戻る';
+  setLabel($('aSave'), '保存して|記録へ戻る');
   $('aBack').hidden = true;
   $('aCancel').hidden = false;
-  $('delActBtn').hidden = false;
+  $('delActZone').hidden = false;
   go('info');
 }
 // 欄の内容を保存する。新しい運用は「保存」を押したとき（make = true）だけ作る。保存した運用を返す
@@ -477,12 +511,12 @@ $('aCancel').addEventListener('click', async () => {
   render();
   go('log');
 });
-// 上の「戻る」ボタンは 2026-11-24 になくした（ユーザーの希望）。一覧へは「メニュー」の「運用の一覧へ戻る」・「やめる（一覧へ）」・スマホの「戻る」で戻る
+// 上の「戻る」ボタンは 2026-11-24 になくした（ユーザーの希望）。一覧へは画面の一番下の「運用の一覧へ戻る」・「やめる（一覧へ）」・スマホの「戻る」で戻る
 $('toListBtn').addEventListener('click', () => go('list'));
 $('delActBtn').addEventListener('click', async () => {
   const a = db.acts.find((x) => x.id === editing);
   if (!a) return;
-  const name = actTitle(a) || '山頂・公園なし';
+  const name = actName(a);
   const warn = a.qsos.length && a.exportedAt < a.changedAt ? 'まだ書き出していない変更があります。' : '';
   if (await ask(`運用「${name}」（${a.qsos.length} 交信）を削除します。${warn}元に戻せません。`, '削除する')) {
     editing = null;
@@ -699,11 +733,10 @@ const civ = (...body) => [0xFE, 0xFE, RADIO_ADDR, CTRL_ADDR, ...body, 0xFD];
 
 function showRig() {
   const el = $('rigState');
-  if (!link) { el.classList.remove('on'); $('connBtn').textContent = 'IC-705 につなぐ'; $('demoBtn').hidden = false; return; }
+  if (!link) { el.classList.remove('on'); $('connBtn').textContent = 'IC-705 に接続'; return; }   // ボタンは 接続／切断（2026-11-25）
   el.classList.add('on');
   el.textContent = `${isDemo ? 'デモ' : 'IC-705'}: 接続 ${rigHz ? mhzStr(rigHz / 1e6) + ' MHz' : '読み取り中…'} ${rigMode}`;   // 状態は 未接続・接続中…・接続・切断（2026-11-25）
-  $('connBtn').textContent = '切る';
-  $('demoBtn').hidden = true;
+  $('connBtn').textContent = `${isDemo ? 'デモ' : 'IC-705'} を切断`;
 }
 // 無線機の値を入力欄へ（その欄を触っている最中は上書きしない）
 function applyRig() {
@@ -796,7 +829,7 @@ function onClosed(l) {
   link = null;
   clearInterval(pollTimer);
   showRig();
-  $('rigState').textContent = 'IC-705: 切断（もう一度「IC-705 につなぐ」を押してください）';
+  $('rigState').textContent = 'IC-705: 切断（もう一度「IC-705 に接続」を押してください）';
 }
 $('connBtn').addEventListener('click', () => connect(false));
 // メモ以外の入力欄: 打ったそばから全角を半角に直す（日本語入力の変換中は待ち、確定したときに直す）。
@@ -818,7 +851,8 @@ document.querySelectorAll('input:not(#comment):not(#eComment)').forEach((el) => 
   el.addEventListener('input', (e) => { if (!e.isComposing) fix(); });
   el.addEventListener('compositionend', () => setTimeout(fix, 0));
 });
-$('demoBtn').addEventListener('click', () => connect(true));
+// 「デモ」ボタンは 2026-11-25 になくした（ユーザーの希望。ログに入るのは周波数とモードだけで、試す価値が小さい）。
+// にせものの無線機（DemoLink・connect(true)）は、自動テストで接続の流れを確かめるために残してある
 
 // ===================== はじめ =====================
 $('qsoForm').addEventListener('submit', (e) => { e.preventDefault(); logQso(); });

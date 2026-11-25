@@ -5,7 +5,12 @@
   --accent: #1a5fb4; --accent-fg: #ffffff; --head: #1d2733; --head-fg: #ffffff;
   --warn-bg: #fff3c4; --warn-fg: #5c4400; --bad-bg: #ffd9d6; --bad-fg: #8a1208;
   --danger: #c01c28; --ok: #1e7d32; --input: #ffffff;
+  /* 等幅の字（2026-11-25 ユーザーの希望で英数字の値はみなこれ）。端末に入っている字だけ（外から読み込まない）。Android は Droid Sans Mono、Windows は Cascadia Mono（どちらも 1 文字 0.6em） */
+  --mono: "Roboto Mono", "Droid Sans Mono", "Cascadia Mono", "Noto Sans Mono", Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
 }
+/* 字の大きさは 4 段階（2026-11-25 ユーザーの希望）: 補足 13px・状態や知らせ 15px・ふつう（入力欄・ボタン・見出し）17px・題名 18px。
+   例外: 相手のコールサインの欄 30px、交信の一覧の 1 行目 15px（等幅をスマホの幅に収めるため） */
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #11161c; --card: #1b222b; --fg: #eef2f6; --muted: #9aa6b2; --line: #36414d;
@@ -19,8 +24,8 @@
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--fg);
-  font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
-  font-size: 16px; line-height: 1.5;
+  font-family: var(--sans);
+  font-size: 17px; line-height: 1.5;
 }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -29,14 +34,14 @@ body {
   padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top));
   background: var(--head); color: var(--head-fg);
 }
-.ttl { font-weight: 700; white-space: nowrap; }
+.ttl { font-size: 18px; font-weight: 700; white-space: nowrap; }
 button.wide { flex: 1 1 auto; font-size: 17px; min-height: 52px; }
 .ttlbox { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 0 10px; }   /* 題名は真ん中 */
 /* 記録の画面のいちばん上: 今の運用の情報と「変更」、その下に無線機の状態 */
 .actinfo { padding: 8px 12px; }
 .actline { display: flex; align-items: center; gap: 8px; }
 .actsum { flex: 1 1 auto; min-width: 0; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
-.actbtn { flex: 0 0 auto; min-height: 40px; padding: 4px 14px; font-size: 15px; }
+.actbtn { flex: 0 0 auto; min-height: 40px; padding: 4px 14px; }
 
 main { max-width: 720px; margin: 0 auto; padding: 10px 12px 40px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 12px; }
@@ -64,17 +69,20 @@ input, select, output {
 output { display: flex; align-items: center; background: transparent; }
 input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
 
-.rigstate { display: block; margin-top: 4px; font-size: 14px; color: var(--muted); }
+.rigstate { display: block; margin-top: 4px; font-size: 15px; color: var(--muted); }
 .rigstate.on { color: var(--ok); font-weight: 600; }
 
-.clock { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 14px; margin-bottom: 6px; }
+.clock { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 15px; margin-bottom: 6px; }
 #utcNow { font-weight: 600; color: var(--fg); }
 .call {
   font-size: 30px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
-  min-height: 60px; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  min-height: 60px;
 }
-.call::placeholder { font-size: 18px; letter-spacing: 0; text-transform: none; font-weight: 400; font-family: system-ui, sans-serif; }
-.dupe { margin-top: 6px; padding: 8px 10px; border-radius: 8px; font-size: 14px; background: var(--warn-bg); color: var(--warn-fg); }
+.call::placeholder { font-size: 17px; letter-spacing: 0; text-transform: none; font-weight: 400; }
+/* 英数字の欄は等幅の字（メモだけはふつうの字）。例の文字（placeholder）は日本語が混じるのでふつうの字 */
+input:not(#comment):not(#eComment), select, output { font-family: var(--mono); }
+input::placeholder { font-family: var(--sans); }
+.dupe { margin-top: 6px; padding: 8px 10px; border-radius: 8px; font-size: 15px; background: var(--warn-bg); color: var(--warn-fg); }
 .dupe.bad { background: var(--bad-bg); color: var(--bad-fg); font-weight: 600; }
 
 .row3 { display: grid; grid-template-columns: 1.3fr .8fr 1fr; gap: 8px; margin-top: 10px; }
@@ -83,7 +91,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0;
 #more summary, .help summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; }
 .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .btns.end { justify-content: flex-end; }
-#logBtn { flex: 1 1 50%; font-size: 18px; min-height: 52px; }
+#logBtn { flex: 1 1 50%; min-height: 52px; }
 /* 入力を消す: つまみを右の端まですべらせたときだけ消す（押しただけでは消えない。IC-705 コントローラーのロックと同じ考え） */
 .logrow { flex-wrap: nowrap; }
 .slide {
@@ -91,7 +99,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0;
   background: var(--bg); border: 1px solid var(--line); touch-action: none; user-select: none; -webkit-user-select: none; overflow: hidden;
 }
 .slabel { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding-left: 40px;
-  font-size: 14px; color: var(--muted); white-space: nowrap; pointer-events: none; }
+  font-size: 15px; color: var(--muted); white-space: nowrap; pointer-events: none; }
 .sthumb {
   position: absolute; top: 3px; left: 3px; width: 44px; height: 44px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; font-weight: 700;
@@ -101,7 +109,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0;
 .slide.dragging .sthumb { transition: none; }
 .slide.armed { border-color: var(--danger); }
 .slide.armed .sthumb { background: var(--danger); color: var(--card); }
-.msg { min-height: 1.5em; margin: 6px 0 0; font-size: 14px; color: var(--ok); }
+.msg { min-height: 1.5em; margin: 6px 0 0; font-size: 15px; color: var(--ok); }
 .msg.err { color: var(--danger); }
 
 .list { list-style: none; margin: 0; padding: 0; }
@@ -121,7 +129,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0;
   display: grid; grid-template-columns: calc(5ch + 3px) minmax(0, 1fr) calc(4ch + 7px) calc(4ch + 7px) calc(4ch + 7px) calc(7ch + 7px);
   align-items: center; font-size: 15px; line-height: 1.3;
 }
-.list button { font-family: "Roboto Mono", "Droid Sans Mono", "Cascadia Mono", "Noto Sans Mono", Consolas, monospace; }
+.list button { font-family: var(--mono); }
 .list .ln1 .c { padding: 0 3px; border-left: 1px solid var(--line); overflow-wrap: anywhere; }
 .list .ln1 .c:first-child { border-left: 0; padding-left: 0; }
 .list .ln1 .rst { overflow-wrap: normal; word-break: keep-all; }   /* 「/」の後ろ（<wbr>）だけで折り返す */
@@ -131,9 +139,18 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0;
 .list .ln1 .md { word-break: break-all; }   /* DSTAR（5 文字）だけは 2 段になる */
 .list .cs { font-weight: 700; }
 .list .cs.badcall { color: var(--danger); text-decoration: underline wavy; text-underline-offset: 3px; }   /* 形がおかしいコールサイン */
-.list .ln2 { display: flex; flex-wrap: wrap; gap: 0 10px; font-size: 12px; color: var(--muted); }
+.list .ln2 { display: flex; flex-wrap: wrap; gap: 0 10px; font-size: 13px; color: var(--muted); }
 .list .ln2 .ref { color: var(--fg); font-weight: 600; }
-.menu .btns:first-of-type { margin-top: 4px; }
+/* 交信の記録の画面の下（2026-11-25 ユーザーの希望。前は見出し「メニュー」に全部並べていた）: 役割ごとに小さな見出しで分け、ボタンは同じ形で横いっぱい */
+.mhead { font-size: 13px; font-weight: 600; color: var(--muted); margin: 14px 0 6px; }
+.mhead:first-child { margin-top: 0; }
+.mrow { display: flex; gap: 8px; }
+.mrow button { flex: 1 1 0; min-width: 0; min-height: 48px; padding: 8px 8px; line-height: 1.3; }
+.mback { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }   /* 画面の移動は灰色で、少し離して一番下 */
+/* 決めるボタンは右（青）。削除は線で区切って下に離す（2026-11-25 ユーザーの希望。押し間違えにくく） */
+.pair button { flex: 1 1 0; min-width: 0; min-height: 52px; padding: 8px 10px; line-height: 1.3; word-break: keep-all; }   /* <wbr> のところでだけ折り返す */
+.dzone { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
+.dzone button { width: 100%; }
 
 .help ol { padding-left: 1.3em; }
 
@@ -149,6 +166,11 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0;
 .actlist { list-style: none; margin: 12px 0 0; padding: 0; }
 .actlist li { margin-bottom: 8px; }
 .actlist button { width: 100%; text-align: left; font-weight: 600; color: var(--fg); border-color: var(--line); padding: 10px 12px; }
+/* 運用の名前: SOTA・POTA の札 + 番号（等幅） */
+.badge { display: inline-block; font-size: 13px; font-weight: 700; line-height: 1.5; padding: 0 6px; margin-right: 5px; border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); vertical-align: 2px; }
+.apair { display: inline-block; margin-right: 12px; }
+.aval { font-family: var(--mono); white-space: nowrap; }
+.anone { color: var(--muted); }
 .actlist button.cur { border: 2px solid var(--accent); font-weight: 600; }
 .actlist .sub2 { display: block; font-size: 13px; color: var(--muted); font-weight: 400; }
 

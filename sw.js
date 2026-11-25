@@ -1,7 +1,7 @@
 // オフライン対応（Service Worker）。このページのファイルだけを端末の中に取っておき、
 // 電波が無いときはそれを使う。外のサイトへは何も送らない・何も取りに行かない（ic705-bt/sw.js と同じしくみ）。
 // 版を上げたら CACHE の名前も app.js の APP_VER に合わせて変える（古い取り置きを消すため）。
-const CACHE = 'fieldlog-2026-11-25-14';
+const CACHE = 'fieldlog-2026-11-25-15';
 const FILES = ['./', 'index.html', 'app.js', 'style.css', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 const WAIT_NET_MS = 3000; // 電波が弱いとき、これ以上待たずに取っておいた物を使う
 
